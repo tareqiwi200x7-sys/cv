@@ -8,23 +8,31 @@ export const ContactSection = () => {
   const [form, setForm] = useState({ name: '', phone: '', service: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.phone) {
       alert('من فضلك أدخل الاسم ورقم الواتساب');
       return;
     }
     
-    setMessages(prev => [...prev, {
-      id: Date.now(),
-      name: form.name,
-      phone: form.phone,
-      service: form.service || 'غير محدد',
-      message: form.message,
-      date: new Date().toISOString().split('T')[0]
-    }]);
-    
-    setSubmitted(true);
+    try {
+      const { doc, setDoc } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      const messageId = Date.now().toString();
+      await setDoc(doc(db, 'messages', messageId), {
+        id: messageId,
+        name: form.name,
+        phone: form.phone,
+        service: form.service || 'غير محدد',
+        message: form.message,
+        date: new Date().toISOString().split('T')[0]
+      });
+      
+      setSubmitted(true);
+    } catch(err) {
+      console.error(err);
+      alert('حدث خطأ أثناء إرسال الرسالة.');
+    }
   };
 
   return (

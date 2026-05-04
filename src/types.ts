@@ -17,7 +17,7 @@ export interface PersonalInfo {
 }
 
 export interface Project {
-  id: number;
+  id: string;
   title: string;
   cat: string;
   desc: string;
@@ -30,7 +30,7 @@ export interface Project {
 }
 
 export interface Service {
-  id: number;
+  id: string;
   title: string;
   desc: string;
   icon: string;
@@ -38,7 +38,7 @@ export interface Service {
 }
 
 export interface Testimonial {
-  id: number;
+  id: string;
   name: string;
   title: string;
   text: string;
@@ -47,7 +47,7 @@ export interface Testimonial {
 }
 
 export interface Message {
-  id: number;
+  id: string;
   name: string;
   phone: string;
   service: string;

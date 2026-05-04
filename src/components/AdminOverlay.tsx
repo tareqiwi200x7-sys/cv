@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context';
 import { motion, AnimatePresence } from 'motion/react';
 import { TrendingUp } from 'lucide-react';
+import { db } from '../firebase';
+import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 export const AdminOverlay = () => {
   const { 
@@ -24,20 +26,49 @@ export const AdminOverlay = () => {
     setInfoForm({ ...personalInfo });
   }, [personalInfo]);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (loginForm.user === 'admin' && loginForm.pass === 'admin123') {
-      setIsAuthenticated(true);
-      setLoginError(false);
+      try {
+        const { signInWithEmailAndPassword } = await import('firebase/auth');
+        const { auth } = await import('../firebase');
+        // We use admin email directly if we can, but since this is a simple local app, we'll
+        // just authenticate using a predefined email and password in firebase
+        await signInWithEmailAndPassword(auth, 'tareqiwi200x7@gmail.com', loginForm.pass);
+        setIsAuthenticated(true);
+        setLoginError(false);
+      } catch (err) {
+        console.error(err);
+        setLoginError(true);
+      }
     } else {
       setLoginError(true);
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const { signOut } = await import('firebase/auth');
+      const { auth } = await import('../firebase');
+      await signOut(auth);
+    } catch(err) {
+      console.error(err);
+    }
     setIsAuthenticated(false);
     setLoginForm({ user: '', pass: '' });
     setActiveTab('overview');
   };
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { auth } = await import('../firebase');
+      const { onAuthStateChanged } = await import('firebase/auth');
+      onAuthStateChanged(auth, (user) => {
+        if (user) setIsAuthenticated(true);
+        else setIsAuthenticated(false);
+      });
+    };
+    checkAuth();
+  }, []);
 
   if (!isAdminOpen) return null;
 
@@ -219,9 +250,15 @@ export const AdminOverlay = () => {
 
                       <div className="md:col-span-2 mt-4">
                         <button 
-                          onClick={() => {
-                            setPersonalInfo(infoForm);
-                            alert('تم حفظ البيانات بنجاح ✅');
+                          onClick={async () => {
+                            try {
+                              await setDoc(doc(db, 'settings', 'personalInfo'), infoForm);
+                              setPersonalInfo(infoForm);
+                              alert('تم حفظ البيانات بنجاح ✅');
+                            } catch (err) {
+                              console.error(err);
+                              alert('حدث خطأ');
+                            }
                           }} 
                           className="w-full py-3 bg-black rounded-lg font-bold text-white shadow-xl hover:-translate-y-1 transition-all"
                         >
@@ -252,12 +289,14 @@ export const AdminOverlay = () => {
                         <div><label className="block text-sm mb-1 font-bold text-[#555]">رابط يوتيوب (للعرض)</label><input type="text" className="form-input" value={projForm.video} onChange={e => setProjForm({...projForm, video: e.target.value})} placeholder="https://youtube.com/..." /></div>
                         <div><label className="block text-sm mb-1 font-bold text-[#555]">لون الخلفية (افتراضي: رمادي)</label><input type="text" className="form-input" value={projForm.color} onChange={e => setProjForm({...projForm, color: e.target.value})} placeholder="#e4e5dd" /></div>
                         <div><label className="block text-sm mb-1 font-bold text-[#555]">رمز تعبيري</label><input type="text" className="form-input" value={projForm.emoji} onChange={e => setProjForm({...projForm, emoji: e.target.value})} placeholder="💻" /></div>
-                        <button onClick={() => {
+                        <button onClick={async () => {
                           if (!projForm.title) return alert('أدخل عنوان المشروع');
-                          const p: any = { ...projForm, id: projForm.id ? Number(projForm.id) : Date.now() };
-                          if (projForm.id) setProjects(projects.map(x => x.id === p.id ? p : x));
-                          else setProjects([...projects, p]);
-                          setProjForm({ id: '', title: '', cat: 'ecommerce', desc: '', problem: '', solution: '', result: '', video: '', color: '', emoji: '' });
+                          const id = projForm.id || Date.now().toString();
+                          const p = { ...projForm, id };
+                          try {
+                            await setDoc(doc(db, 'projects', id), p);
+                            setProjForm({ id: '', title: '', cat: 'ecommerce', desc: '', problem: '', solution: '', result: '', video: '', color: '', emoji: '' });
+                          } catch (err) { console.error(err); alert('Error'); }
                         }} className="w-full py-3 bg-black rounded-lg font-bold text-white shadow-xl mt-4 hover:-translate-y-1 transition-all">💾 حفظ المشروع</button>
                       </div>
                     </div>
@@ -269,7 +308,7 @@ export const AdminOverlay = () => {
                             <div><div className="font-semibold">{p.emoji} {p.title}</div><div className="text-sm text-text-muted">{p.cat}</div></div>
                             <div className="flex gap-2 shrink-0">
                               <button onClick={() => setProjForm({ ...p, id: String(p.id) })} className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded-lg text-accent-blue text-sm hover:bg-blue-500/20">✏️ تعديل</button>
-                              <button onClick={() => { if(confirm('هل أنت متأكد؟')) setProjects(projects.filter(x => x.id !== p.id)); }} className="px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-lg text-red-500 text-sm hover:bg-red-500/20">🗑 حذف</button>
+                              <button onClick={async () => { if(confirm('هل أنت متأكد؟')) { try { await deleteDoc(doc(db, 'projects', String(p.id))); } catch(err) { console.error(err); } } }} className="px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-lg text-red-500 text-sm hover:bg-red-500/20">🗑 حذف</button>
                             </div>
                           </div>
                         ))}
@@ -289,13 +328,15 @@ export const AdminOverlay = () => {
                         <div><label className="block text-sm mb-1 text-text-secondary">وصف الخدمة</label><textarea className="form-textarea" value={svcForm.desc} onChange={e => setSvcForm({...svcForm, desc: e.target.value})} placeholder="وصف الخدمة وفوائدها..." /></div>
                         <div><label className="block text-sm mb-1 text-text-secondary">رمز الخدمة</label><input type="text" className="form-input" value={svcForm.icon} onChange={e => setSvcForm({...svcForm, icon: e.target.value})} placeholder="🎨" /></div>
                         <div><label className="block text-sm mb-1 text-text-secondary">المميزات (مفصولة بفاصلة)</label><textarea className="form-textarea" value={svcForm.features} onChange={e => setSvcForm({...svcForm, features: e.target.value})} placeholder="تصميم عصري, سرعة عالية, تحسين SEO" /></div>
-                        <button onClick={() => {
+                        <button onClick={async () => {
                           if (!svcForm.title) return alert('أدخل عنوان الخدمة');
                           const feats = typeof svcForm.features === 'string' ? svcForm.features.split(',').map((f: string) => f.trim()).filter(Boolean) : svcForm.features;
-                          const s: any = { ...svcForm, features: feats, id: svcForm.id ? Number(svcForm.id) : Date.now() };
-                          if (svcForm.id) setServices(services.map(x => x.id === s.id ? s : x));
-                          else setServices([...services, s]);
-                          setSvcForm({ id: '', title: '', desc: '', icon: '', features: '' });
+                          const id = svcForm.id || Date.now().toString();
+                          const s = { ...svcForm, features: feats, id };
+                          try {
+                            await setDoc(doc(db, 'services', id), s);
+                            setSvcForm({ id: '', title: '', desc: '', icon: '', features: '' });
+                          } catch (err) { console.error(err); alert('Error'); }
                         }} className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl font-bold text-white shadow-[0_0_20px_rgba(59,130,246,0.3)] mt-2">💾 حفظ الخدمة</button>
                       </div>
                     </div>
@@ -307,7 +348,7 @@ export const AdminOverlay = () => {
                             <div><div className="font-semibold">{s.icon} {s.title}</div><div className="text-sm text-text-muted">{s.desc.slice(0,50)}...</div></div>
                             <div className="flex gap-2 shrink-0">
                               <button onClick={() => setSvcForm({ ...s, id: String(s.id), features: Array.isArray(s.features) ? s.features.join('، ') : s.features })} className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded-lg text-accent-blue text-sm hover:bg-blue-500/20">✏️ تعديل</button>
-                              <button onClick={() => { if(confirm('هل أنت متأكد؟')) setServices(services.filter(x => x.id !== s.id)); }} className="px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-lg text-red-500 text-sm hover:bg-red-500/20">🗑 حذف</button>
+                              <button onClick={async () => { if(confirm('هل أنت متأكد؟')) { try { await deleteDoc(doc(db, 'services', String(s.id))); } catch(err) { console.error(err); } } }} className="px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-lg text-red-500 text-sm hover:bg-red-500/20">🗑 حذف</button>
                             </div>
                           </div>
                         ))}
@@ -332,12 +373,14 @@ export const AdminOverlay = () => {
                           </select>
                         </div>
                         <div><label className="block text-sm mb-1 text-text-secondary">حرف الصورة الرمزية</label><input type="text" className="form-input" maxLength={2} value={testForm.avatar} onChange={e => setTestForm({...testForm, avatar: e.target.value})} placeholder="م" /></div>
-                        <button onClick={() => {
+                        <button onClick={async () => {
                           if (!testForm.name || !testForm.text) return alert('أدخل اسم العميل ونص التقييم');
-                          const t: any = { ...testForm, id: testForm.id ? Number(testForm.id) : Date.now() };
-                          if (testForm.id) setTestimonials(testimonials.map(x => x.id === t.id ? t : x));
-                          else setTestimonials([...testimonials, t]);
-                          setTestForm({ id: '', name: '', title: '', text: '', rating: 5, avatar: '' });
+                          const id = testForm.id || Date.now().toString();
+                          const t = { ...testForm, id };
+                          try {
+                            await setDoc(doc(db, 'testimonials', id), t);
+                            setTestForm({ id: '', name: '', title: '', text: '', rating: 5, avatar: '' });
+                          } catch (err) { console.error(err); alert('Error'); }
                         }} className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl font-bold text-white shadow-[0_0_20px_rgba(59,130,246,0.3)] mt-2">💾 حفظ التقييم</button>
                       </div>
                     </div>
@@ -349,7 +392,7 @@ export const AdminOverlay = () => {
                             <div><div className="font-semibold">{t.avatar} {t.name}</div><div className="text-sm text-text-muted">{t.title}</div></div>
                             <div className="flex gap-2 shrink-0">
                               <button onClick={() => setTestForm({ ...t, id: String(t.id) })} className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded-lg text-accent-blue text-sm hover:bg-blue-500/20">✏️ تعديل</button>
-                              <button onClick={() => { if(confirm('هل أنت متأكد؟')) setTestimonials(testimonials.filter(x => x.id !== t.id)); }} className="px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-lg text-red-500 text-sm hover:bg-red-500/20">🗑 حذف</button>
+                              <button onClick={async () => { if(confirm('هل أنت متأكد؟')) { try { await deleteDoc(doc(db, 'testimonials', String(t.id))); } catch(err) { console.error(err); } } }} className="px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-lg text-red-500 text-sm hover:bg-red-500/20">🗑 حذف</button>
                             </div>
                           </div>
                         ))}
@@ -377,6 +420,15 @@ export const AdminOverlay = () => {
                         <div className="flex gap-4">
                           <a href={`tel:${m.phone}`} className="flex items-center gap-2 text-sm text-accent-blue hover:underline bg-blue-500/5 px-3 py-1.5 rounded-lg border border-border-subtle">📞 {m.phone}</a>
                           <a href={`https://wa.me/${m.phone.replace(/[^0-9+]/g, '')}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-[#25d366] hover:underline bg-[#25d366]/10 px-3 py-1.5 rounded-lg border border-[#25d366]/20">💬 واتساب</a>
+                          <button onClick={async () => {
+                            if(confirm('هل أنت متأكد من حذف هذه الرسالة؟')) {
+                              try {
+                                await deleteDoc(doc(db, 'messages', String(m.id)));
+                              } catch(err) {
+                                console.error(err);
+                              }
+                            }
+                          }} className="flex items-center gap-2 text-sm text-red-500 hover:underline bg-red-500/5 px-3 py-1.5 rounded-lg border border-red-500/20">🗑️ حذف</button>
                         </div>
                       </div>
                     ))}

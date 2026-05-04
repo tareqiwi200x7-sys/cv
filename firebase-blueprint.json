@@ -1,0 +1,98 @@
+{
+  "entities": {
+    "PersonalInfo": {
+      "title": "Personal Info",
+      "description": "Portfolio owner information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "bio": { "type": "string" },
+        "avatar": { "type": "string" },
+        "resumeVideo": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "workingHours": { "type": "string" },
+        "availabilityStatus": { "type": "string" },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "projects": { "type": "string" },
+            "clients": { "type": "string" },
+            "satisfaction": { "type": "string" },
+            "experience": { "type": "string" }
+          }
+        }
+      }
+    },
+    "Project": {
+      "title": "Project",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "cat": { "type": "string" },
+        "desc": { "type": "string" },
+        "problem": { "type": "string" },
+        "solution": { "type": "string" },
+        "result": { "type": "string" },
+        "video": { "type": "string" },
+        "color": { "type": "string" },
+        "emoji": { "type": "string" }
+      }
+    },
+    "Service": {
+      "title": "Service",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "desc": { "type": "string" },
+        "icon": { "type": "string" },
+        "features": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Testimonial": {
+      "title": "Testimonial",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "title": { "type": "string" },
+        "text": { "type": "string" },
+        "rating": { "type": "number" },
+        "avatar": { "type": "string" }
+      }
+    },
+    "Message": {
+      "title": "Message",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "service": { "type": "string" },
+        "message": { "type": "string" },
+        "date": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/PersonalInfo" },
+      "description": "Singleton configuration for the site"
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Portfolio Projects"
+    },
+    "/services/{serviceId}": {
+      "schema": { "$ref": "#/entities/Service" },
+      "description": "Offered Services"
+    },
+    "/testimonials/{testimonialId}": {
+      "schema": { "$ref": "#/entities/Testimonial" },
+      "description": "Client Testimonials"
+    },
+    "/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Contact form submissions"
+    }
+  }
+}
