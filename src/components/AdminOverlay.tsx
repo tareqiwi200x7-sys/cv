@@ -27,20 +27,19 @@ export const AdminOverlay = () => {
   }, [personalInfo]);
 
   const handleLogin = async () => {
-    if (loginForm.user === 'admin' && loginForm.pass === 'admin123') {
-      try {
-        const { signInWithEmailAndPassword } = await import('firebase/auth');
-        const { auth } = await import('../firebase');
-        // We use admin email directly if we can, but since this is a simple local app, we'll
-        // just authenticate using a predefined email and password in firebase
-        await signInWithEmailAndPassword(auth, 'tareqiwi200x7@gmail.com', loginForm.pass);
-        setIsAuthenticated(true);
-        setLoginError(false);
-      } catch (err) {
-        console.error(err);
-        setLoginError(true);
-      }
-    } else {
+    try {
+      const { signInWithPopup, GoogleAuthProvider } = await import('firebase/auth');
+      const { auth } = await import('../firebase');
+      const provider = new GoogleAuthProvider();
+      // Required to bypass iframe restrictions in some browsers for Google Auth
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      await signInWithPopup(auth, provider);
+      setIsAuthenticated(true);
+      setLoginError(false);
+    } catch (err) {
+      console.error(err);
       setLoginError(true);
     }
   };
@@ -78,22 +77,12 @@ export const AdminOverlay = () => {
         <div className="min-h-screen flex items-center justify-center p-4">
           <div className="glass-card p-12 w-full max-w-[420px] shadow-[0_40px_80px_rgba(0,0,0,0.5)]">
             <div className="text-[1.8rem] font-black gradient-text text-center mb-2">⚡ لوحة التحكم</div>
-            <div className="text-center text-text-muted text-sm mb-8">أدخل بيانات تسجيل الدخول</div>
+            <div className="text-center text-text-muted text-sm mb-8">سجل دخولك باستخدام حساب جوجل الخاص بك</div>
             
-            <div className="mb-4">
-              <label className="block text-sm font-semibold mb-2 text-text-secondary">اسم المستخدم</label>
-              <input type="text" className="form-input" placeholder="admin" value={loginForm.user} onChange={e => setLoginForm({...loginForm, user: e.target.value})} />
-            </div>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-semibold mb-2 text-text-secondary">كلمة المرور</label>
-              <input type="password" className="form-input" placeholder="••••••••" value={loginForm.pass} onChange={e => setLoginForm({...loginForm, pass: e.target.value})} />
-            </div>
-            
-            {loginError && <div className="text-red-500 text-sm mb-4">بيانات خاطئة. حاول مجدداً.</div>}
+            {loginError && <div className="text-red-500 text-sm mb-4">حدث خطأ أثناء تسجيل الدخول. حاول مجدداً وقم بفتح الموقع في صفحة جديدة (Open in New Tab) إذا لزم الأمر.</div>}
             
             <button onClick={handleLogin} className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl font-bold text-white shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-transform hover:-translate-y-1">
-              🔐 تسجيل الدخول
+              🔐 تسجيل الدخول باستخدام جوجل
             </button>
             
             <div className="mt-6 text-center">
